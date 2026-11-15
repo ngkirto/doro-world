@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#eee9e4"><meta name="description" content="Meet Doro. A cinematic entrance into a tiny playable world."><title>Doro World</title></head>
+<body>
+<canvas id="world" aria-label="Doro's playable 3D world" tabindex="0"></canvas>
+<header><a class="wordmark" href="./">doro<span>world</span></a><span class="tools"><button id="sound" aria-pressed="true">Sound on</button><button id="replay" hidden>Replay intro ↗</button></span></header>
+<div id="loading" role="status"><span class="spinner"></span><p>Waking up Doro…</p><small id="load-detail">Preparing her little world</small></div>
+<div id="cinema" hidden><div class="bar top"></div><div class="bar bottom"></div><button id="skip">Skip intro →</button><div class="timeline"><i id="progress"></i></div></div>
+<section id="welcome" hidden><span>YOUR LITTLE COMPANION</span><h1>A world for Doro.</h1><p>Go on. Take a little wander.</p></section>
+<footer id="controls" hidden><div><kbd>W</kbd><span class="keyrow"><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div><p>Walk <span>Shift to run · R run style · 1–7 dodge · Drag to look</span></p><button id="reset">Return home</button></footer>
+<nav id="touch" aria-label="Movement controls" hidden><button data-key="KeyW" aria-label="Walk forward">↑</button><div><button data-key="KeyA" aria-label="Walk left">←</button><button data-key="KeyS" aria-label="Walk backward">↓</button><button data-key="KeyD" aria-label="Walk right">→</button></div></nav>
+<section id="orange-controls" aria-label="歐潤吉互動" hidden><p id="orange-hint" role="status"></p><div><button id="interact" type="button">E · 抱歐潤吉</button><button id="toss" type="button" hidden>F · 拋歐潤吉</button></div></section>
+<button id="skip-orange" type="button" hidden>跳過 →</button>
+<button id="shock" hidden>Q · 驚訝！</button>
+<section id="practice-prompt" hidden><button id="practice-enter">E · 歐潤吉投投樂</button></section>
+<section id="practice-panel" hidden aria-label="歐潤吉自由練習">
+<small>ORANGE GROVE · 自由練習</small><p id="practice-hint" role="status"></p>
+<p>命中 <b id="practice-hits">0</b> / 投出 <span id="practice-attempts">0</span> · <span id="practice-aim">正前方</span></p>
+<progress id="practice-charge" max="1" value="0"></progress> <span id="practice-power">0%</span>
+<div><button id="practice-left" aria-label="向左瞄準">←</button><button id="practice-throw">按住 F · 蓄力</button><button id="practice-right" aria-label="向右瞄準">→</button></div>
+<button id="practice-exit">返回散步 · Esc</button></section>
+<div id="error" role="alert" hidden><h2>Doro couldn’t load</h2><p id="error-detail"></p><button onclick="location.reload()">Try again</button></div>
+<script type="module" src="/src/main.js"></script>
+</body></html>
