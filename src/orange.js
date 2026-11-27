@@ -27,6 +27,9 @@ export class OrangeInteraction {
     this.lookTarget = new THREE.Vector3();
     this.lastPosition = new THREE.Vector3();
     this.spinAxis = new THREE.Vector3();
+    this.physicsDelta = new THREE.Vector3();
+    this.spinRotation = new THREE.Quaternion();
+    this.supportRotation = new THREE.Quaternion(0, 0, 0, 0);
     this.pickupRotation = new THREE.Quaternion();
     this.managed = false;
     this.throwOptions = { forwardSpeed: 1.2, upSpeed: 1.0 };
@@ -355,10 +358,10 @@ export class OrangeInteraction {
       this.prop.position.addScaledVector(this.velocity, step);
       this.resolveWall();
       this.onPhysicsStep?.(this.lastPosition, step);
-      const delta = this.prop.position.clone().sub(this.lastPosition).setY(0);
+      const delta = this.physicsDelta.copy(this.prop.position).sub(this.lastPosition).setY(0);
       if (delta.lengthSq() > 1e-10) {
         this.spinAxis.crossVectors(UP, delta).normalize();
-        this.prop.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(this.spinAxis, delta.length() / this.radius));
+        this.prop.quaternion.premultiply(this.spinRotation.setFromAxisAngle(this.spinAxis, delta.length() / this.radius));
       }
       const floorContact = this.groundLevel();
       if (this.prop.position.y <= floorContact) {
@@ -375,10 +378,15 @@ export class OrangeInteraction {
 
   groundLevel() {
     if (!this.supportPoints?.length) return this.groundHeight;
-    const point = new THREE.Vector3();
+    const q = this.prop.quaternion;
+    if (this.supportRotation.equals(q)) return this.supportHeight;
+    const a = 2 * (q.x * q.y + q.w * q.z);
+    const b = 1 - 2 * (q.x * q.x + q.z * q.z);
+    const c = 2 * (q.y * q.z - q.w * q.x);
     let bottom = Infinity;
-    for (const vertex of this.supportPoints) bottom = Math.min(bottom, point.copy(vertex).applyQuaternion(this.prop.quaternion).y);
-    return FLOOR - bottom;
+    for (const v of this.supportPoints) bottom = Math.min(bottom, a * v.x + b * v.y + c * v.z);
+    this.supportRotation.copy(q);
+    return this.supportHeight = FLOOR - bottom;
   }
 
   refreshUI() {

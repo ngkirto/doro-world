@@ -1,3 +1,5 @@
+import { createQualityController } from './render-quality.js';
+import { createPerformanceMonitor } from './performance-monitor.js';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrangeInteraction } from './orange.js';
@@ -6,6 +8,7 @@ import { createWorldProps } from './world-props.js';
 import './style.css';
 
 const $ = (id) => document.getElementById(id);
+$('error-retry').addEventListener('click', () => location.reload());
 const canvas = $('world');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#eee9e4');
@@ -94,6 +97,11 @@ const actions = {};
 let current = null;
 let orange;
 let practice, worldProps;
+const quality = createQualityController(renderer, sun, $('quality'), tier => { worldProps?.setQuality(tier); });
+const movementDirection = new THREE.Vector3();
+const followLook = new THREE.Vector3();
+const cameraOffset = new THREE.Vector3();
+const lightOffset = new THREE.Vector3(-3, 6, 4);
 let shockTime = -1;
 const shockMeshes = [];
 let oneShot = null; // name of the dodge currently playing, if any
@@ -239,6 +247,7 @@ setMuted(muted);
 for (const type of ['pointerdown', 'keydown']) window.addEventListener(type, ensureAudio, { capture: true });
 
 function fail(message) {
+  performance.mark('doro-ready');
   $('loading').hidden = true;
   $('error').hidden = false;
   $('error-detail').textContent = message;
@@ -349,7 +358,7 @@ function play(dt) {
   const pace = orange?.holding ? (running ? 1.05 : 0.42) : (running ? RUN_SPEED : WALK_SPEED);
   speed = THREE.MathUtils.damp(speed, moving ? pace : 0, 9, dt);
   if (moving) {
-    const direction = new THREE.Vector3(-Math.sin(orbit) * vertical + Math.cos(orbit) * horizontal, 0, -Math.cos(orbit) * vertical - Math.sin(orbit) * horizontal).normalize();
+    const direction = movementDirection.set(-Math.sin(orbit) * vertical + Math.cos(orbit) * horizontal, 0, -Math.cos(orbit) * vertical - Math.sin(orbit) * horizontal).normalize();
     actor.position.addScaledVector(direction, speed * dt);
     yaw = Math.atan2(direction.x, direction.z);
     $('welcome').hidden = true;
@@ -362,10 +371,10 @@ function play(dt) {
     else playClip(orange?.holding ? 'Orange_Walk' : 'Walk').timeScale = THREE.MathUtils.clamp(speed / 0.4, 0.8, 1.7);
   }
   const distance = (innerWidth < 700 ? 3.8 : 3.1) + (orange?.holding ? 0.3 : 0);
-  desiredCamera.copy(actor.position).add(new THREE.Vector3(Math.sin(orbit) * distance, 0.55 + Math.sin(pitch) * distance, Math.cos(orbit) * distance));
-  if (orange?.frameCamera(dt, look, desiredCamera, new THREE.Vector3(actor.position.x, 0.55, actor.position.z))) return;
+  desiredCamera.copy(actor.position).add(cameraOffset.set(Math.sin(orbit) * distance, 0.55 + Math.sin(pitch) * distance, Math.cos(orbit) * distance));
+  if (orange?.frameCamera(dt, look, desiredCamera, followLook.set(actor.position.x, 0.55, actor.position.z))) return;
   camera.position.lerp(desiredCamera, 1 - Math.exp(-dt * 5));
-  look.lerp(new THREE.Vector3(actor.position.x, 0.55, actor.position.z), 1 - Math.exp(-dt * 8));
+  look.lerp(followLook.set(actor.position.x, 0.55, actor.position.z), 1 - Math.exp(-dt * 8));
   camera.lookAt(look);
 }
 
@@ -388,9 +397,9 @@ $('shock').onclick = () => { shocked(); canvas.focus(); };
 const handled = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'KeyR', 'KeyE', 'KeyF', ...Object.keys(DODGES)];
 window.addEventListener('keydown', (event) => {
   if (state === 'play' && practice?.handleKey(event, true)) return;
-  if (event.code === 'KeyQ' && !event.repeat && !['BUTTON','INPUT'].includes(event.target.tagName)) { shocked(); return; }
-  if (event.code === 'KeyE' && !event.repeat && state === 'play' && practice?.near && !oneShot && !orange?.busy && !['BUTTON','INPUT'].includes(event.target.tagName)) { event.preventDefault(); keys.clear(); practice.enter(); return; }
-  if (!handled.includes(event.code) || state !== 'play' || ['BUTTON', 'INPUT'].includes(event.target.tagName)) return;
+  if (event.code === 'KeyQ' && !event.repeat && !['BUTTON','INPUT','SELECT'].includes(event.target.tagName)) { shocked(); return; }
+  if (event.code === 'KeyE' && !event.repeat && state === 'play' && practice?.near && !oneShot && !orange?.busy && !['BUTTON','INPUT','SELECT'].includes(event.target.tagName)) { event.preventDefault(); keys.clear(); practice.enter(); return; }
+  if (!handled.includes(event.code) || state !== 'play' || ['BUTTON', 'INPUT', 'SELECT'].includes(event.target.tagName)) return;
   event.preventDefault();
   if (event.code === 'KeyE' || event.code === 'KeyF') {
     if (!event.repeat && !oneShot) {
@@ -441,7 +450,7 @@ $('reset').onclick = () => {
 };
 window.addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight);
+  camera.updateProjectionMatrix(); quality.resize();
 });
 
 new GLTFLoader().load(`${import.meta.env.BASE_URL}models/doro.glb`, async (gltf) => {
@@ -477,6 +486,7 @@ new GLTFLoader().load(`${import.meta.env.BASE_URL}models/doro.glb`, async (gltf)
   try { await orange.load(); }
   catch (error) { console.error(error); fail('The orange could not load. Please try again.'); return; }
   worldProps = createWorldProps(scene, orange.visual);
+  worldProps.setQuality(quality.tier);
   practice = new OrangePractice({ scene, actor, camera, orange, world: worldProps, playClip, sound: playSound,
     setYaw(value) { yaw = value; keys.clear(); speed = 0; },
     focus() { canvas.focus({ preventScroll: true }); },
@@ -484,6 +494,7 @@ new GLTFLoader().load(`${import.meta.env.BASE_URL}models/doro.glb`, async (gltf)
     elements: Object.fromEntries(['prompt','enter','panel','hint','charge','power','hits','attempts','aim','left','right','throw','exit'].map(key => [key, $('practice-' + key)])),
   });
   if (import.meta.env.DEV) window.__doro = { actor, actions, mixer, camera, orange, get state() { return state; }, get clip() { return current?.getClip().name; }, get t() { return introTime; }, sfxLog, get audioState() { return audio?.state; }, keys, pause(v) { paused = v; }, advance(seconds) { for (let i = 0; i < Math.round(seconds * 60); i++) tick(1 / 60); } };
+  performance.mark('doro-ready');
   $('loading').hidden = true;
   beginIntro();
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) beginPlay();
@@ -502,23 +513,45 @@ function tick(dt) {
     mesh.visible = shockTime >= 0;
   }
   orange?.afterAnimation();
-  worldProps?.update(dt);
+  worldProps?.update(dt, camera.position);
   $('shock').hidden = state !== 'play' || !!practice?.active;
   if (practice?.active) { $('controls').hidden = true; $('touch').hidden = true; $('welcome').hidden = true; }
   else if (state === 'play') { $('controls').hidden = false; $('touch').hidden = false; }
   if (practice && (state !== 'play' || oneShot)) $('practice-prompt').hidden = true;
   $('shock').disabled = !!oneShot || !!orange?.busy;
-  sun.position.copy(actor.position).add(new THREE.Vector3(-3, 6, 4));
+  sun.position.copy(actor.position).add(lightOffset);
   sun.target.position.copy(actor.position);
   grid.position.x = Math.round(actor.position.x / 10) * 10;
   grid.position.z = Math.round(actor.position.z / 10) * 10;
   renderer.render(scene, camera);
 }
 
+const metrics = createPerformanceMonitor(renderer, (destination) => {
+  if (!practice || !orange?.ready) return;
+  practice.exit(); keys.clear(); speed = 0; oneShot = null; shockTime = -1;
+  if (state !== 'play') beginPlay();
+  if (destination === 'practice') {
+    actor.position.copy(worldProps.station); orange.spawn(0); practice.enter();
+  } else { $('reset').click(); orbit = Math.PI + .32; }
+});
 let previous = performance.now();
-let paused = false; // dev-only: lets tests step the world by hand
+let accumulated = 0;
+let lastRendered = previous;
+let paused = false;
+document.addEventListener('visibilitychange', () => {
+  previous = lastRendered = performance.now(); accumulated = 0; quality.resetTiming(); metrics.reset();
+});
 renderer.setAnimationLoop((now) => {
-  const dt = Math.min((now - previous) / 1000, 0.05); previous = now;
-  if (document.hidden || paused) return;
-  tick(dt);
+  const rawMs = now - previous; previous = now;
+  if (document.hidden || paused) { lastRendered = now; accumulated = 0; return; }
+  accumulated += rawMs;
+  const interval = 1000 / quality.fpsLimit;
+  if (accumulated < interval - .5) return;
+  const frameMs = now - lastRendered;
+  lastRendered = now;
+  accumulated = Math.max(0, accumulated - interval) % interval;
+  const started = performance.now();
+  tick(Math.min(frameMs / 1000, .05));
+  if (state !== 'loading') quality.sample(frameMs);
+  metrics.sample(frameMs, performance.now() - started, `${practice?.active ? '投擲區' : state} · ${quality.tier}`);
 });

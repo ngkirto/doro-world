@@ -1,3 +1,4 @@
+import { batchStaticProps } from './batch-props.js';
 import * as THREE from 'three';
 
 /** Built once, after orange.load(). Orange clones share the source geometry/materials.
@@ -147,6 +148,9 @@ export function createWorldProps(scene, orangeVisual) {
     const object = fruit(root, [0, 0, 0], 0.56 + i * 0.025, i * 1.4);
     object.visible = false; return object;
   });
+  const batches = [...batchStaticProps(path), ...batchStaticProps(pile), ...batchStaticProps(crate), ...batchStaticProps(spills)];
+  const shadowCasters = [];
+  root.traverse(mesh => { if (mesh.isMesh && mesh.castShadow) shadowCasters.push(mesh); });
   let burstTime = Infinity;
   scene.add(root);
 
@@ -157,7 +161,15 @@ export function createWorldProps(scene, orangeVisual) {
       crate.rotation.set(0, 0, 0);
       for (const item of bursts) item.visible = !reducedMotion;
     },
-    update(dt) {
+    setQuality(tier) {
+      for (const mesh of shadowCasters) mesh.castShadow = tier !== 'low';
+    },
+    update(dt, cameraPosition) {
+      if (cameraPosition) {
+        // Beyond the fully opaque fog, including the largest object/burst radius.
+        const visible = Math.hypot(cameraPosition.x - station.x, cameraPosition.z - station.z) < 45;
+        crate.visible = spills.visible = mat.visible = visible;
+      }
       if (!Number.isFinite(burstTime)) return;
       burstTime += Math.max(0, dt);
       const t = burstTime, duration = 0.85;
@@ -176,6 +188,7 @@ export function createWorldProps(scene, orangeVisual) {
     },
     dispose() {
       root.removeFromParent();
+      batches.forEach(batch => batch.dispose());
       geometries.forEach((value) => value.dispose());
       materials.forEach((value) => value.dispose());
       textures.forEach((value) => value.dispose());

@@ -17,3 +17,9 @@ body:has(#skip-orange:not([hidden])) #touch { visibility:hidden; }
   #orange-hint { max-width:145px; }
   #skip-orange { bottom:28px; right:20px; }
 }
+
+#credits{position:absolute;bottom:5px;right:24px;font-size:10px;color:#795847;z-index:7}body:has(#cinema:not([hidden])) #credits{display:none}
+
+#performance-panel{position:absolute;top:90px;left:12px;z-index:9;background:#fffdeed9;border-radius:12px;padding:8px;color:#333;font:11px monospace}#performance-panel pre{margin:0 0 6px}#performance-panel button{font-size:10px;padding:5px}
+
+#quality{font:inherit;font-size:11px;color:#51463a;border:1px solid #51463a26;background:#fffcf6e6;border-radius:20px;padding:10px;max-width:130px}#quality:focus-visible{outline:3px solid #ab518a}@media(max-width:700px){header{flex-wrap:wrap;gap:8px}.tools{gap:5px}#quality{max-width:112px;padding:8px}#performance-panel{top:135px;font-size:10px}#shock{top:112px}}
