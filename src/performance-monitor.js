@@ -5,7 +5,7 @@ export function createPerformanceMonitor(renderer, benchmark) {
   panel.id = 'performance-panel'; panel.setAttribute('aria-label', '效能數據');
   const output = document.createElement('pre'); panel.append(output);
   if (import.meta.env.DEV) {
-    for (const [label, scene] of [['測試出生點', 'home'], ['測試投擲區', 'practice']]) {
+    for (const [label, scene] of [['測試出生點', 'home'], ['測試投擲區', 'practice'], ['測試路牌', 'sign']]) {
       const button = document.createElement('button'); button.textContent = label;
       button.onclick = () => { benchmark(scene); reset(); }; panel.append(button);
     }

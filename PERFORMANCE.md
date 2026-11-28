@@ -38,3 +38,7 @@ node scripts/optimize-model.mjs original.glb optimized.glb
 ```
 
 Validation: `node --test`, `npm run build`, `npm audit --audit-level=high`; production preview with CSP, visual texture inspection, and successful practice throw/refill.
+
+## Wooden direction sign
+
+The replacement sign uses 120 triangles, one merged mesh, one opaque material and one 1024 x 1024 canvas atlas. The source wood WebP is 177,018 bytes. Lettering, wood grain and nail/rust marks share the atlas; no separate text planes or modeled grain. Arrow yaw follows the existing destination coordinates. UVs stay within the atlas, with inset margins for mipmaps. Development metrics include a sign inspection camera; ordinary gameplay and production have no inspection camera.

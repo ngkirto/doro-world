@@ -1,3 +1,4 @@
+import { createWoodenSign } from './wooden-sign.js';
 import { batchStaticProps } from './batch-props.js';
 import * as THREE from 'three';
 
@@ -36,47 +37,8 @@ export function createWorldProps(scene, orangeVisual) {
     return mesh;
   }
 
-  function label(parent, text, width, height, position) {
-    // A plain board remains usable in headless scene tests without a DOM.
-    if (typeof document === 'undefined') return;
-    const canvas = document.createElement('canvas');
-    canvas.width = 1024; canvas.height = 256;
-    const context = canvas.getContext('2d');
-    context.fillStyle = '#543b32'; context.textAlign = 'center'; context.textBaseline = 'middle';
-    context.font = 'bold 94px "Microsoft JhengHei", "PingFang TC", sans-serif';
-    context.fillText(text, 512, 132, 950);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace; textures.add(texture);
-    const ink = new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, toneMapped: false });
-    materials.add(ink);
-    const plane = geometry(new THREE.PlaneGeometry(width, height));
-    for (const sign of [-1, 1]) {
-      const mesh = new THREE.Mesh(plane, ink);
-      mesh.position.set(position[0], position[1], position[2] * sign);
-      mesh.rotation.y = sign < 0 ? Math.PI : 0;
-      parent.add(mesh);
-    }
-  }
-
-  const sign = new THREE.Group();
-  sign.name = 'RPGSignPlaceholder'; sign.position.set(8, 0, 6); root.add(sign);
-  box(sign, [0.12, 1.8, 0.12], [0, 0.88, 0], darkWood);
-  const arrowShape = new THREE.Shape();
-  arrowShape.moveTo(-0.85, -0.16); arrowShape.lineTo(0.65, -0.16);
-  arrowShape.lineTo(0.88, 0); arrowShape.lineTo(0.65, 0.16);
-  arrowShape.lineTo(-0.85, 0.16); arrowShape.closePath();
-  const arrowGeometry = geometry(new THREE.ExtrudeGeometry(arrowShape, { depth: 0.08, bevelEnabled: false }));
-  arrowGeometry.translate(0, 0, -0.04);
-  for (const [text, y, target, surface] of [
-    ['歐潤吉投投樂', 1.52, station, wood[1]],
-    ['街機 · 籌備中', 1.1, new THREE.Vector3(-8, 0, -4), wood[0]],
-  ]) {
-    const board = new THREE.Group();
-    board.position.y = y;
-    board.rotation.y = Math.atan2(-(target.z - sign.position.z), target.x - sign.position.x);
-    const mesh = new THREE.Mesh(arrowGeometry, surface); mesh.castShadow = true;
-    board.add(mesh); label(board, text, 1.35, 0.29, [-0.06, 0, 0.043]); sign.add(board);
-  }
+  const woodenSign = createWoodenSign(new THREE.Vector3(8, 0, 6), station);
+  const sign = woodenSign.sign; root.add(sign);
 
   const path = new THREE.Group(); path.name = 'PracticeSteppingStones'; root.add(path);
   const curve = new THREE.CatmullRomCurve3([
@@ -188,6 +150,7 @@ export function createWorldProps(scene, orangeVisual) {
     },
     dispose() {
       root.removeFromParent();
+      woodenSign.dispose();
       batches.forEach(batch => batch.dispose());
       geometries.forEach((value) => value.dispose());
       materials.forEach((value) => value.dispose());

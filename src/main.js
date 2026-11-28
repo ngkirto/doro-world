@@ -97,6 +97,7 @@ const actions = {};
 let current = null;
 let orange;
 let practice, worldProps;
+let previewSign = false;
 const quality = createQualityController(renderer, sun, $('quality'), tier => { worldProps?.setQuality(tier); });
 const movementDirection = new THREE.Vector3();
 const followLook = new THREE.Vector3();
@@ -254,6 +255,7 @@ function fail(message) {
 }
 
 function beginIntro() {
+  previewSign = false;
   practice?.exit(); shockTime = -1;
   orange?.reset();
   state = 'intro'; introTime = 0; speed = 0; yaw = 0; oneShot = null; introBeat = '';
@@ -396,6 +398,7 @@ $('shock').onclick = () => { shocked(); canvas.focus(); };
 
 const handled = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'KeyR', 'KeyE', 'KeyF', ...Object.keys(DODGES)];
 window.addEventListener('keydown', (event) => {
+  previewSign = false;
   if (state === 'play' && practice?.handleKey(event, true)) return;
   if (event.code === 'KeyQ' && !event.repeat && !['BUTTON','INPUT','SELECT'].includes(event.target.tagName)) { shocked(); return; }
   if (event.code === 'KeyE' && !event.repeat && state === 'play' && practice?.near && !oneShot && !orange?.busy && !['BUTTON','INPUT','SELECT'].includes(event.target.tagName)) { event.preventDefault(); keys.clear(); practice.enter(); return; }
@@ -523,14 +526,18 @@ function tick(dt) {
   sun.target.position.copy(actor.position);
   grid.position.x = Math.round(actor.position.x / 10) * 10;
   grid.position.z = Math.round(actor.position.z / 10) * 10;
+  if (import.meta.env.DEV && previewSign) { camera.position.set(8, 2.5, 10.5); camera.lookAt(8, 1.15, 6); }
   renderer.render(scene, camera);
 }
 
 const metrics = createPerformanceMonitor(renderer, (destination) => {
   if (!practice || !orange?.ready) return;
+  previewSign = destination === 'sign';
   practice.exit(); keys.clear(); speed = 0; oneShot = null; shockTime = -1;
   if (state !== 'play') beginPlay();
-  if (destination === 'practice') {
+  if (destination === 'sign') {
+    actor.position.set(8, 0, 11); orange.spawn(0); orbit = .1;
+  } else if (destination === 'practice') {
     actor.position.copy(worldProps.station); orange.spawn(0); practice.enter();
   } else { $('reset').click(); orbit = Math.PI + .32; }
 });
